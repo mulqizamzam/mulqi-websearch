@@ -1,0 +1,23 @@
+# mulqi-websearch bundle patch.
+#
+# Mounts ONE plugin that fronts every search backend behind a single
+# `ctx.web` search provider (`mulqi-websearch`) plus a single fetch provider
+# (`mulqi-fetch`). It replaces the four separate providers these bundles used
+# to mount: dsh-free-search, @liustack/modsearch, dsh-web-monid and
+# dsh-web-monid-fallback.
+#
+# The provider ids below are asserted by lib/index.js; keep them in sync.
+#
+# NOTE: a profile-level `- id: web` row replaces this whole config (DSH patch
+# semantics), so the profile also pins both ids. This layer only makes the
+# plugin work when mounted on its own.
+
+- insert:
+    - id: mulqi-websearch
+      name: mulqi-websearch
+
+- id: web
+  config:
+    searchProvider: mulqi-websearch
+    fetchProvider: mulqi-fetch
+
