@@ -10,12 +10,47 @@
   },
   "files": [
     "lib",
+    "test",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "NOTES.md",
+    "LICENSE"
   ],
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "web-search",
+    "search",
+    "round-robin",
+    "fallback",
+    "duckduckgo",
+    "bing",
+    "searxng",
+    "tavily",
+    "exa",
+    "perplexity",
+    "modsearch",
+    "monid"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mulqizamzam/mulqi-websearch.git"
+  },
+  "homepage": "https://github.com/mulqizamzam/mulqi-websearch#readme",
+  "bugs": {
+    "url": "https://github.com/mulqizamzam/mulqi-websearch/issues"
+  },
+  "author": "mulqizamzam",
   "license": "MIT",
   "engines": {
     "node": ">=20"
+  },
+  "scripts": {
+    "check": "node --check lib/backends.js && node --check lib/scheduler.js && node --check lib/index.js",
+    "test": "node --test test/regression.test.mjs",
+    "verify": "npm run check && npm test"
   },
   "dsh": {
     "bundle": {
