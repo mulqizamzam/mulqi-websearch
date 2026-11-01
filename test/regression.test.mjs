@@ -89,6 +89,25 @@ test('every registered tool declares output schema and render', async () => {
   }
 })
 
+test('every tool render reads the RESULT, not the arguments', async () => {
+  // Bug 3: dsh-tools calls `render(args, value)`. A renderer declared as
+  // `render(value)` receives the ARGUMENTS in that position, so the tool card
+  // shows the input instead of the output (free_search_test rendered "null").
+  const mod = await loadPlugin()
+  const { ctx, registered } = fakeContext()
+  mod.apply(ctx, {})
+  // A result shape both renderer families surface: textRender prints the
+  // whole value, renderSearch prints value.sources.
+  const value = { sources: [{ url: 'https://value-marker.test/', title: 'VALUE-MARKER' }], truncated: false }
+  for (const tool of registered.tools) {
+    const rendered = tool.output.render({ argsMarker: 'ARGS-MARKER' }, value)
+    assert.ok(Array.isArray(rendered), tool.name + ' render must return content blocks')
+    const text = rendered.map((block) => block.text ?? '').join('')
+    assert.ok(text.includes('VALUE-MARKER'), tool.name + ' render must include the result value')
+    assert.equal(text.includes('ARGS-MARKER'), false, tool.name + ' render must not echo the arguments')
+  }
+})
+
 test('apply() registers exactly one search provider and one fetch provider', async () => {
   const mod = await loadPlugin()
   const { ctx, registered } = fakeContext()
