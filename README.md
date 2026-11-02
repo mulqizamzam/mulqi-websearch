@@ -87,7 +87,7 @@ mkdir -p node_modules/@deepseek-ai
 
 PROFILE=/path/to/.dsh/profiles/web/node_modules
 
-# engine library (provides the 13 free-search engines)
+# engine library: 11 of the 15 backends below are reused from it
 ln -sfn /path/to/dsh-custom/plugins/dsh-free-search-chain node_modules/dsh-free-search
 
 # DSH core packages used by the plugin

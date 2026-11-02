@@ -1,7 +1,7 @@
 {
   "name": "mulqi-websearch",
-  "version": "1.0.0",
-  "description": "Mulqi Websearch — one search/fetch provider for DeepSeek Harness that merges free-search (13 engines), @liustack/modsearch, dsh-web-monid and dsh-web-monid-fallback behind a single ctx.web provider with round-robin rotation and bounded fallback.",
+  "version": "1.0.1",
+  "description": "Mulqi Websearch — one search/fetch provider for DeepSeek Harness that merges free-search, @liustack/modsearch, dsh-web-monid and dsh-web-monid-fallback behind a single ctx.web provider: 15 backends, round-robin rotation, bounded fallback.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
