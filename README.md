@@ -22,6 +22,26 @@ Those four bundles each registered their own provider with `ctx.web`. The seam c
 - An explicit `engine` argument is tried first, then the ring still falls back on failure.
 - Abort wins: no fallback attempt runs after `signal.aborted`.
 
+### SearXNG is special
+
+Public SearXNG instances mostly refuse the JSON API now. Probed from this host,
+every default instance answered with `403`, `429`, an anti-bot HTML page
+("Verifying your browser...", "Making sure you're not a bot!"), or `200 text/html`
+with the JSON API disabled — **zero** returned usable JSON.
+
+Walking six of those at the upstream 8s-per-instance timeout cost ~48s of the
+ring's time on one dead engine. `searxng` therefore has its own walker:
+
+- 6s per instance, 12s for the whole attempt (bounded, not 6 × 8s).
+- `403`/`429` and anti-bot bodies mark an instance **dead for 10 minutes**, so
+  later calls skip it instead of re-paying for it.
+- `classifySearxngResponse()` is exported and pure, so every shape that occurs
+  in the wild is covered by a test without touching the network.
+
+The engine is still registered and still attempted — it just no longer
+dominates a call. Point `searxngInstances` at instances you control to make it
+useful.
+
 ## Tools
 
 | Tool | Purpose |
@@ -48,6 +68,7 @@ The core `web_search` / `web_fetch` tools route through the same providers.
     safeSearch: moderate
     modsearchCli: /path/to/modsearch/dist/main.js
     maxBodyChars: 200000
+    searxngInstances: ["https://your-searxng.example"]
     keys:
       TINYFISH_API_KEY: "..."
 ```

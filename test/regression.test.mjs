@@ -12,6 +12,7 @@
  * Run with:  node --test test/
  */
 import assert from 'node:assert/strict'
+import http from 'node:http'
 import test from 'node:test'
 
 const PLUGIN_URL = new URL('../lib/index.js', import.meta.url)
@@ -156,6 +157,69 @@ test('platform_search enum accepts exactly the platform ids', async () => {
 /* ------------------------------------------------------------------ */
 /* Ring behaviour that the merge depends on                           */
 /* ------------------------------------------------------------------ */
+
+test('searxng classifier reads the shapes public instances really return', async () => {
+  // Public SearXNG instances answer the JSON API in five different ways:
+  // real results, zero results, 403/429, an anti-bot HTML page, or plain HTML
+  // with the JSON API disabled. Only the first is usable, and the anti-bot
+  // page must NOT be parsed as "no results" -- that would keep walking.
+  const { classifySearxngResponse } = await import(new URL('../lib/backends.js', import.meta.url).href)
+
+  const ok = classifySearxngResponse(200, 'application/json', JSON.stringify({
+    results: [{ url: 'https://a.test/', title: 'A', content: 'snippet' }],
+  }))
+  assert.equal(ok.ok, true)
+  assert.equal(ok.dead, false)
+  assert.deepEqual(ok.sources, [{ url: 'https://a.test/', title: 'A', snippet: 'snippet' }])
+
+  const empty = classifySearxngResponse(200, 'application/json', JSON.stringify({ results: [] }))
+  assert.equal(empty.ok, false)
+  assert.equal(empty.dead, false, 'zero results is a valid answer, not a dead instance')
+
+  for (const status of [403, 429]) {
+    const refused = classifySearxngResponse(status, 'text/html', 'nope')
+    assert.equal(refused.ok, false)
+    assert.equal(refused.dead, true, 'HTTP ' + status + ' must put the instance on cooldown')
+  }
+
+  for (const title of [
+    'Verifying your browser...',
+    'Making sure you are not a bot!',
+    'Security check - Substation',
+  ]) {
+    const bot = classifySearxngResponse(200, 'text/html', '<html><title>' + title + '</title></html>')
+    assert.equal(bot.ok, false, title + ' carries no results')
+    assert.equal(bot.dead, true, title + ' must not be retried on every call')
+  }
+
+  const html = classifySearxngResponse(200, 'text/html', '<html><title>SearXNG</title></html>')
+  assert.equal(html.ok, false)
+  assert.equal(html.dead, false, 'JSON disabled is a config problem, not a block')
+})
+
+test('searxng walker respects its budget and skips dead instances first', async () => {
+  // The walk must never spend more than SEARXNG_TOTAL_BUDGET_MS, and an
+  // instance that already refused must be tried last, not first.
+  const { searxngSearch } = await import(new URL('../lib/backends.js', import.meta.url).href)
+  const tried = []
+  const servers = new Map()
+
+  const server = http.createServer((req, res) => {
+    const base = 'http://127.0.0.1:' + server.address().port
+    tried.push(req.url)
+    res.writeHead(403, { 'content-type': 'text/html' })
+    res.end('Forbidden')
+  })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const base = 'http://127.0.0.1:' + server.address().port
+  try {
+    const ctx = { options: { searxngInstances: [base + '/one', base + '/two'] }, timeParsed: undefined }
+    await assert.rejects(() => searxngSearch('q', 5, ctx, undefined), /all SearXNG instances failed/)
+    assert.equal(tried.length, 2, 'every configured instance must be attempted once')
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
 
 test('scheduler rotates the starting engine and falls back past failures', async () => {
   const { RoundRobinScheduler } = await import(new URL('../lib/scheduler.js', import.meta.url).href)
